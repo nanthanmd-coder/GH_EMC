@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOID_WALKER // PROTOCOL</title>
+    <style>
+        :root {
+            --bg-color: #020202;
+            --term-color: #00ff41; /* Hacker Green */
+            --dim-color: #005515;
+            --warn-color: #ff3333;
+            --final-color: #00e5ff; /* Cyan */
+            --ui-border: #1a5c1a;
+            --btn-bg: #051105;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--term-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #sys-frame {
+            width: 90%;
+            max-width: 600px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--ui-border);
+            margin-top: 20px;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.05);
+            position: relative;
+        }
+        
+        #header {
+            padding: 8px;
+            border-bottom: 1px solid var(--ui-border);
+            text-align: right;
+            font-size: 0.75em;
+            background: #000;
+            color: var(--dim-color);
+            letter-spacing: 1px;
+        }
+
+        #console-view {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: rgba(0, 10, 0, 0.8);
+            font-size: 14px;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            scrollbar-width: none; /* Hide scrollbar for immersion */
+        }
+        #console-view::-webkit-scrollbar { display: none; }
+        
+        .log { margin-bottom: 6px; opacity: 0.6; word-wrap: break-word; }
+        .log.imp { opacity: 1; color: #ccffcc; font-weight: bold; border-left: 2px solid var(--term-color); padding-left: 8px; margin-top: 5px; }
+        .log.err { color: var(--warn-color); opacity: 1; border-left: 2px solid var(--warn-color); padding-left: 8px;}
+        .log.sys { color: var(--dim-color); font-style: italic; font-size: 0.85em; }
+        .log.end { color: var(--final-color); font-weight: bold; text-shadow: 0 0 4px var(--final-color); border: 1px dashed var(--final-color); padding: 10px;}
+        .log.noise { color: #334433; font-size: 0.8em; font-family: monospace; } 
+
+        #io-panel {
+            padding: 20px;
+            background: #000;
+            border-top: 1px solid var(--ui-border);
+        }
+        
+        .grid-ctrl {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            max-width: 220px;
+            margin: 0 auto;
+        }
+        
+        button {
+            background: var(--btn-bg);
+            color: var(--term-color);
+            border: 1px solid var(--ui-border);
+            padding: 12px 0;
+            font-family: inherit;
+            font-size: 1.1em;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.1s;
+        }
+        button:hover { background: var(--ui-border); color: #fff; box-shadow: 0 0 10px var(--term-color); }
+        button:active { transform: scale(0.98); }
+        
+        /* Modal */
+        #modal-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: glitch-in 0.3s;
+        }
+        #modal-overlay img {
+            max-width: 90%;
+            max-height: 45%;
+            border: 1px solid #fff;
+            margin-bottom: 20px;
+            filter: contrast(1.2) grayscale(0.5);
+        }
+        #modal-text {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1em;
+            text-align: center;
+            padding: 0 30px;
+            line-height: 1.5;
+            font-family: monospace;
+        }
+        
+        .mod-warn img { border-color: var(--warn-color) !important; box-shadow: 0 0 20px var(--warn-color); }
+        .mod-warn #modal-text { color: var(--warn-color); }
+        
+        .mod-final img { border-color: var(--final-color) !important; box-shadow: 0 0 20px var(--final-color); }
+        .mod-final #modal-text { color: var(--final-color); }
+
+        @keyframes glitch-in { 0% { opacity: 0; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body oncontextmenu="return false;"> <!-- Basic anti-right click -->
+
+<div id="sys-frame">
+    <div id="header">
+        SYS_STATUS: <span style="color:var(--term-color)">CONNECTED</span> // <span id="hash-id">X-00</span>
+    </div>
+
+    <div id="console-view">
+        <div class="log sys">Booting kernel... [OK]</div>
+        <div class="log sys">Loading geometry data... [CORRUPTED]</div>
+        <div class="log sys">Engaging sonar fallback... [OK]</div>
+        <div class="log imp">LINK ESTABLISHED. AWAITING INPUT.</div>
+    </div>
+
+    <div id="io-panel">
+        <div class="grid-ctrl">
+            <div></div>
+            <button onclick="_exec('f')">▲<br><small>FWD</small></button>
+            <div></div>
+            
+            <button onclick="_exec('l')">◀<br><small>LFT</small></button>
+            <button onclick="_interact()">●<br><small>ACT</small></button>
+            <button onclick="_exec('r')">▶<br><small>RGT</small></button>
+            
+            <div></div>
+            <button onclick="_exec('b')">▼<br><small>BWD</small></button>
+            <div></div>
+        </div>
+    </div>
+
+    <div id="modal-overlay">
+        <img id="m-img" src="" alt="NO_DATA">
+        <div id="m-text"></div>
+        <button id="m-btn" onclick="_close_mod()">ACKNOWLEDGE</button>
+    </div>
+
+</div>
+
+<script>
+
+    const _m_buffer = [55, 60, 62, 66, 63, 67, 54, 55, 59, 59, 66, 66, 66];
+    
+    const _txt_noise = [
+        "Hydraulic hiss detected in walls.",
+        "Temperature dropping rapidly.",
+        "Unknown magnetic interference.",
+        "Static discharge on hull.",
+        "Distant mechanical grinding.",
+        "Packet loss on visual feed...",
+        "Echo indicates large void nearby.",
+        "Geiger counter clicking.",
+        "Data stream unstable.",
+        "Unidentified whisper on audio channel."
+    ];
+
+    const _txt_env = [
+        "Environment: Geometric fractures visible in the void.",
+        "Status: Standing on a suspended data-platform.",
+        "Sensors: Echoes indicate a vast, empty chamber.",
+        "Visuals: Glitching textures on nearby walls.",
+        "Atmosphere: Heavy static pressure detected.",
+        "Zone Analysis: Reality cohesion is low here.",
+        "Surroundings: Cold, metallic, and silent.",
+        "System: Local topology seems to be shifting.",
+        "Scan: Dark shapes moving in the periphery.",
+        "Location: Unknown. Grid reference invalid."
+    ];
+    
+    const _txt_path = [
+        "Sonar ping returns from",
+        "Thermal signature at",
+        "Airflow detected from",
+        "Laser rangefinder hits",
+        "Pathfinding alg. points to"
+    ];
+
+    // Obfuscated Node Names
+    const _n_id = {
+        1: "NW Node (Top-Left)", 2: "NE Node (Top-Right)",
+        3: "West Junction", 4: "East Junction",
+        5: "SW Base (Bot-Left)", 6: "SE Base (Bot-Right)",
+        7: "Singularity Point"
+    };
+    const _net_top = {
+        1: { '1': {t:2, s:'A'}, '2': {t:3, s:'F'} },
+        2: { '3': {t:1, s:'A'}, '2': {t:4, s:'B'} },
+        3: { '0': {t:1, s:'F'}, '1': {t:4, s:'G'}, '2': {t:5, s:'E'} },
+        4: { '0': {t:2, s:'B'}, '3': {t:3, s:'G'}, '2': {t:6, s:'C'} },
+        5: { '0': {t:3, s:'E'}, '1': {t:6, s:'D'} },
+        6: { '0': {t:4, s:'C'}, '3': {t:5, s:'D'} }
+    };
+    const _seg_map = {
+        '0':['A','B','C','D','E','F'], '1':['B','C'], '2':['A','B','D','E','G'],
+        '3':['A','B','C','D','G'], '4':['B','C','F','G'], '5':['A','C','D','F','G'],
+        '6':['A','C','D','E','F','G'], '7':['A','B','C'], '8':['A','B','C','D','E','F','G'],
+        '9':['A','B','C','D','F','G'], '-':['G'], ',':['DP']
+    };
+    let _ptr = 0; // Current Level Index
+    let _pos = 1; // Current Node
+    let _head = 0; // Facing Direction (0-3)
+
+    function _init() {
+        _load(0, true);
+    }
+
+    function _get_char(idx) {
+        if (idx < 0 || idx >= _m_buffer.length) return null;
+        return String.fromCharCode(_m_buffer[idx] - 10);
+    }
+
+    function _load(idx, fwd) {
+        if (idx >= _m_buffer.length) return; 
+
+        _ptr = idx;
+        const char = _get_char(_ptr);
+
+        // Spawn logic
+        if (char === ',') _pos = 7;
+        else if (char === '-') _pos = fwd ? 3 : 4; 
+        else if (char === '1') _pos = fwd ? 2 : 6;
+        else _pos = fwd ? 1 : 6;
+
+        _scramble_head();
+        _ui_upd();
+        _log("----------------------------------------", "sys");
+
+        if (char === ',') {
+            _log("WARNING: GRAVITATIONAL ANOMALY DETECTED.", "err");
+            _pop('COMMA'); 
+        } 
+        else if (idx === _m_buffer.length - 1) {
+            _log("ALERT: FINAL SECTOR REACHED.", "end");
+            _log("Reality anchor destabilized.", "noise");
+            _scan();
+        } 
+        else {
+            _log(`>> INITIALIZING SECTOR [${idx+1}]... OK.`, "sys");
+            _log("Teleportation complete. Re-calibrating...", "sys");
+            _scan();
+        }
+    }
+
+    function _scramble_head() {
+        _head = Math.floor(Math.random() * 4);
+    }
+
+    function _exec(cmd) {
+        const char = _get_char(_ptr);
+        
+        if (char === ',' && _pos === 7) {
+            _log("ERROR: Vacuum environment. Thrusters ineffective.", "err");
+            return;
+        }
+
+        let off = 0;
+        if (cmd === 'f') off = 0;
+        else if (cmd === 'r') off = 1;
+        else if (cmd === 'b') off = 2;
+        else if (cmd === 'l') off = 3;
+
+        const target_h = (_head + off) % 4; // Absolute direction
+
+        // Add Noise
+        if (Math.random() > 0.65) _log(_rnd(_txt_noise), "noise");
+
+        const link = _net_top[_pos] && _net_top[_pos][target_h];
+
+        if (!link) {
+            _log("ALERT: PHYSICAL BARRIER DETECTED. NO PATH.", "err");
+            return;
+        }
+
+        const active = _seg_map[char];
+        if (active.includes(link.s)) {
+            _pos = link.t;
+            _head = target_h; // Player turns to face movement
+            
+            _ui_upd();
+            _log(`Movement execution: ${_dir_name(cmd)}.`, "imp");
+            _scan();
+        } else {
+            _log("ACCESS DENIED: Energy bridge is INACTIVE.", "err");
+        }
+    }
+
+    function _scan() {
+        const char = _get_char(_ptr);
+        const active = _seg_map[char];
+        
+        _log(_rnd(_txt_env), "sys"); 
+
+        if (char === ',' && _pos === 7) {
+            _log("CRITICAL ERROR: SPACE-TIME FRACTURE.", "sys");
+            _log("Rear linkage severed. Return impossible.", "err");
+            _log("Unstable singularity detected ahead.", "imp");
+            return;
+        }
+
+        const conn = _net_top[_pos];
+        let found = [];
+
+        for (let abs_d in conn) {
+            let data = conn[abs_d];
+            if (active.includes(data.s)) {
+                let abs_i = parseInt(abs_d);
+                let rel_i = (abs_i - _head + 4) % 4;
+                
+                let r_name = "";
+                if (rel_i === 0) r_name = "FORWARD";
+                else if (rel_i === 1) r_name = "RIGHT";
+                else if (rel_i === 2) r_name = "BACK";
+                else if (rel_i === 3) r_name = "LEFT";
+                
+                let pre = _rnd(_txt_path);
+                found.push(`[${r_name}]: ${pre} open corridor.`);
+            }
+        }
+
+        // Random noise injection
+        if (Math.random() > 0.6) _log(_rnd(_txt_noise), "noise");
+
+        if (found.length > 0) {
+            _log("Parsing topology...", "sys");
+            found.forEach(t => _log(t));
+        } else {
+            _log("WARNING: ISOLATION. No valid paths detected.", "err");
+        }
+
+        _hint(char);
+    }
+
+    function _hint(c) {
+        let ex = false, en = false;
+        const is_last = (_ptr === _m_buffer.length - 1);
+
+        if (c === '-') { if (_pos === 4) ex = true; if (_pos === 3) en = true; }
+        else if (c === ',') { if (_pos === 7) ex = true; }
+        else if (c === '1') { if (_pos === 6) ex = true; if (_pos === 2) en = true; }
+        else {
+            if (_pos === 6) ex = true;
+            if (_pos === 1) en = true;
+        }
+
+        if (ex) {
+            if (is_last) _log(">> TERMINAL DATA POINT DETECTED AHEAD. <<", "end");
+            else _log(">> GREEN SIGNAL detected on floor (CLICK ACT TO JUMP).", "end");
+        }
+        if (en && _ptr > 0 && c !== ',') _log("<< RED RESIDUAL ENERGY detected under you(CLICK ACT TO BACK).", "end");
+    }
+
+    function _interact() {
+        const c = _get_char(_ptr);
+        let nxt = false, prv = false;
+
+        if (c === '-') { if (_pos === 4) nxt = true; if (_pos === 3) prv = true; if(_ptr<3) prv = false;}
+        else if (c === ',') { if (_pos === 7) { nxt = true; prv = false; } }
+        else if (c === '1') { if (_pos === 6) nxt = true; if (_pos === 2) prv = true; }
+        else {
+            if (_pos === 6) nxt = true;
+            if (_pos === 1) prv = true;
+        }
+
+        if (nxt) {
+            if (_ptr === _m_buffer.length - 1) {
+                _log("Handshake initiating...", "sys");
+                _log("UPLOADING FINAL COORDINATES...", "end");
+                setTimeout(() => { _pop('FINAL'); }, 1500);
+            } else {
+                _log("Syncing coordinates... JUMPING.", "sys");
+	_log("u feel dizzy and mess up your directions.", "err");
+                setTimeout(() => _load(_ptr + 1, true), 600);
+            }
+        } else if (prv) {
+            _log("Reversing polarity... JUMPING.", "sys");
+            setTimeout(() => _load(_ptr - 1, false), 600);
+        } else {
+            if (c === ',' && _pos === 7) {
+                _log("ERROR: BACKWARD LINK SEVERED. FORWARD ONLY.", "err");
+            } else {
+                _log("SCAN RESULT: Nothing to interact with.", "err");
+            }
+        }
+    }
+
+    function _pop(t) {
+        const m = document.getElementById('modal-overlay');
+        const i = document.getElementById('m-img');
+        const txt = document.getElementById('m-text');
+        const b = document.getElementById('m-btn');
+
+        m.className = ''; 
+
+        if (t === 'COMMA') {
+            m.classList.add('mod-warn');
+            // REPLACE WITH YOUR IMAGE URL
+            i.src = "mid.jpg"; 
+            txt.innerHTML = "CRITICAL FAILURE<br>Rear bridge collapsed.<br>Return path: INVALID.<br>Memory Recalled.";
+            b.innerText = "ACCEPT FATE";
+            b.style.color = "#ff3333";
+            b.style.borderColor = "#ff3333";
+        } 
+        else if (t === 'FINAL') {
+            m.classList.add('mod-final');
+            // REPLACE WITH YOUR IMAGE URL
+            i.src = "final.jpg";
+            txt.innerHTML = "UPLOAD COMPLETE<br>All coordinates resolved.<br>Data stream ended.<br>Welcome back to reality.";
+            b.innerText = "DISCONNECT";
+            b.style.color = "#00e5ff";
+            b.style.borderColor = "#00e5ff";
+        }
+        m.style.display = 'flex';
+    }
+
+    function _close_mod() {
+        const m = document.getElementById('modal-overlay');
+        const is_f = m.classList.contains('mod-final');
+        m.style.display = 'none';
+        
+        if (is_f) {
+            _log(">>> CONNECTION TERMINATED <<<", "end");
+            _log("Session closed.", "sys");
+            // Disable controls
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+        } else {
+            _log("Visual cortex restarting... Safe.", "sys");
+            _scan();
+        }
+    }
+
+    function _rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function _dir_name(c) { return {'f':'FORWARD','b':'BACKWARD','l':'LEFT','r':'RIGHT'}[c]; }
+    function _ui_upd() {
+        // Hash ID just for flavor, random hex
+        document.getElementById('hash-id').innerText = "0x" + Math.floor(Math.random()*16777215).toString(16).toUpperCase();
+    }
+    function _log(msg, type='') {
+        const v = document.getElementById('console-view');
+        const d = document.createElement('div');
+        d.className = `log ${type}`;
+        d.innerHTML = `> ${msg}`;
+        v.appendChild(d);
+        if (v.children.length > 300) v.removeChild(v.firstChild);
+        v.scrollTop = v.scrollHeight;
+    }
+
+    _init();
+
+</script>
+</body>
+</html>
